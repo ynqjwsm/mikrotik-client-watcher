@@ -64,7 +64,7 @@ python main.py
 ```
 
 5. 访问 Web 界面
-打开浏览器访问 `http://localhost:8000`
+打开浏览器访问 `http://your-server-ip:8000`
 
 ### Docker 部署
 
@@ -74,7 +74,7 @@ python main.py
 ```yml
 services:
   mikrotik-watcher:
-    image: brantwang/mikrotik-client-watcher:v0.0.1
+    image: brantwang/mikrotik-client-watcher:v0.0.2
     container_name: mikrotik-watcher
     restart: unless-stopped
     ports:
@@ -98,7 +98,7 @@ docker run -d \
   -v ./data:/data \
   -e LOGIN_KEY=your-secret-key \
   --restart unless-stopped \
-  brantwang/mikrotik-client-watcher:v0.0.1
+  brantwang/mikrotik-client-watcher:v0.0.2
 ```
 
 ## 使用说明
