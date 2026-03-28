@@ -71,42 +71,34 @@ python main.py
 #### 方式一：使用 docker compose（推荐）
 
 1. 创建环境变量文件（可选）
-```bash
-cp .env.example .env
-# 编辑 .env 文件，修改配置
-```
-
-2. 启动服务
-```bash
-docker compose up -d
-```
-
-3. 查看日志
-```bash
-docker compose logs -f
-```
-
-4. 停止服务
-```bash
-docker compose down
+```yml
+services:
+  mikrotik-watcher:
+    image: brantwang/mikrotik-client-watcher:v0.0.1
+    container_name: mikrotik-watcher
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - LOGIN_KEY=${LOGIN_KEY:-admin123}
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      - DATA_DIR=/data
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
 ```
 
 #### 方式二：使用纯 Docker
 
-1. 构建镜像
-```bash
-docker build -t mikrotik-client-watcher .
-```
-
-2. 运行容器
 ```bash
 docker run -d \
   --name mikrotik-watcher \
   -p 8000:8000 \
-  -v mikrotik-watcher-data:/data \
+  -v ./data:/data \
   -e LOGIN_KEY=your-secret-key \
   --restart unless-stopped \
-  mikrotik-client-watcher
+  brantwang/mikrotik-client-watcher:v0.0.1
 ```
 
 ## 使用说明
