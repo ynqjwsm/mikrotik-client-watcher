@@ -1,46 +1,5 @@
 {
-  "feishu_webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/ec39da90-93bb-4729-8ce1-33fe7821f873",
-  "routers": [
-    {
-      "id": "20260329001932076265",
-      "name": "HOME",
-      "host": "192.168.6.1",
-      "port": 8728,
-      "username": "admin",
-      "password": "brant@dsj123",
-      "ssl": false,
-      "poll_interval_seconds": 30,
-      "clients": [
-        {
-          "id": "20260329001951684872",
-          "name": "王庶民的小米",
-          "address": null,
-          "mac_address": "A4:FF:9F:89:85:E5",
-          "active_hostname": null,
-          "push_rules": [
-            {
-              "type": "appear",
-              "enabled": true,
-              "interval_minutes": null
-            },
-            {
-              "type": "disappear",
-              "enabled": true,
-              "interval_minutes": null
-            }
-          ],
-          "last_seen": "2026-03-29T01:43:42.105059",
-          "is_online": true,
-          "last_push_times": {
-            "appear": "2026-03-29T01:33:19.695688",
-            "disappear": "2026-03-29T01:30:48.551677"
-          },
-          "message_template": "路由器：{router_name}\n客户端：{client_name} \nIP地址：{address}\nMAC地址：{mac_address}\n时间：{timestamp}\n事件：{event_type}",
-          "enabled": true
-        }
-      ],
-      "enabled": true
-    }
-  ],
-  "last_updated": "2026-03-29T01:43:42.105097"
+  "feishu_webhook_url": null,
+  "routers": [],
+  "last_updated": "2026-03-29T02:00:55.398825"
 }
