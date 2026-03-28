@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mikrotik-watcher:
+    build: .
+    container_name: mikrotik-watcher
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - mikrotik-watcher-data:/data
+    environment:
+      - LOGIN_KEY=${LOGIN_KEY:-admin123}
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      - DATA_DIR=/data
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+volumes:
+  mikrotik-watcher-data:
+    name: mikrotik-watcher-data

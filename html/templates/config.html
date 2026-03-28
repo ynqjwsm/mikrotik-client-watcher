@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MikroTik 客户端监控 - 配置</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .router-card { margin-bottom: 1rem; }
+        .client-item { border-left: 3px solid #0d6efd; padding-left: 1rem; margin-bottom: 0.5rem; }
+        .online { color: #198754; }
+        .offline { color: #dc3545; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <span class="navbar-brand">MikroTik 客户端监控</span>
+            <div class="ms-auto">
+                <button class="btn btn-outline-light btn-sm" onclick="logout()">退出</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="status-tab" data-bs-toggle="tab" data-bs-target="#status" type="button" role="tab">状态</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="feishu-tab" data-bs-toggle="tab" data-bs-target="#feishu" type="button" role="tab">飞书配置</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="routers-tab" data-bs-toggle="tab" data-bs-target="#routers" type="button" role="tab">ROS路由器管理</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="mainTabsContent">
+            <div class="tab-pane fade show active" id="status" role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>监控状态</span>
+                        <button class="btn btn-sm btn-primary" onclick="refreshStatus(true)">刷新</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="statusContent"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="feishu" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">飞书 Webhook 配置</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="feishuWebhook" class="form-label">Webhook URL</label>
+                            <input type="text" class="form-control" id="feishuWebhook" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/...">
+                        </div>
+                        <div class="mb-3">
+                            <label for="testMessage" class="form-label">测试消息</label>
+                            <input type="text" class="form-control" id="testMessage" value="这是一条测试消息">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="saveFeishuConfig()">保存配置</button>
+                            <button class="btn btn-secondary" onclick="testFeishuMessage()">发送测试消息</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="routers" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>ROS路由器列表</h5>
+                    <button class="btn btn-primary" onclick="showAddRouterModal()">添加ROS路由器</button>
+                </div>
+                <div id="routersList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="routerModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="routerModalTitle">添加ROS路由器</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="routerForm">
+                        <input type="hidden" id="routerId">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="routerName" class="form-label">路由器名称</label>
+                                <input type="text" class="form-control" id="routerName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="routerHost" class="form-label">主机地址</label>
+                                <input type="text" class="form-control" id="routerHost" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="routerPort" class="form-label">端口</label>
+                                <input type="number" class="form-control" id="routerPort" value="8728" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="routerUsername" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="routerUsername" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="routerPassword" class="form-label">密码</label>
+                                <input type="password" class="form-control" id="routerPassword" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="routerPollInterval" class="form-label">轮询间隔(秒)</label>
+                                <input type="number" class="form-control" id="routerPollInterval" value="30" min="10" required>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="routerSSL">
+                                    <label class="form-check-label" for="routerSSL">启用 SSL</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="routerEnabled" checked>
+                                    <label class="form-check-label" for="routerEnabled">启用监控</label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRouter()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="clientModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clientModalTitle">添加客户端</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="clientForm">
+                        <input type="hidden" id="currentRouterId">
+                        <input type="hidden" id="clientId">
+                        <div class="mb-3">
+                            <label for="clientName" class="form-label">客户端名称</label>
+                            <input type="text" class="form-control" id="clientName" required>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="clientEnabled" checked>
+                                <label class="form-check-label" for="clientEnabled">启用监控</label>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="clientAddress" class="form-label">IP 地址</label>
+                                <input type="text" class="form-control" id="clientAddress" placeholder="192.168.1.100">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="clientMacAddress" class="form-label">MAC 地址</label>
+                                <input type="text" class="form-control" id="clientMacAddress" placeholder="AA:BB:CC:DD:EE:FF">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="clientHostname" class="form-label">主机名</label>
+                                <input type="text" class="form-control" id="clientHostname" placeholder="my-device">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="pushAppear" checked>
+                                    <label class="form-check-label" for="pushAppear">上线推送</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="pushDisappear" checked>
+                                    <label class="form-check-label" for="pushDisappear">下线推送</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="pushAlive">
+                                    <label class="form-check-label" for="pushAlive">存活推送</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3" id="aliveIntervalDiv" style="display: none;">
+                            <label for="aliveInterval" class="form-label">存活推送间隔(分钟)</label>
+                            <input type="number" class="form-control" id="aliveInterval" value="60" min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="clientMessageTemplate" class="form-label">消息模板（可选，留空使用默认模板，支持Markdown格式）</label>
+                            <textarea class="form-control" id="clientMessageTemplate" rows="4" placeholder="{router_name} - {client_name} {event_type}
+**IP地址**: {address}
+**MAC地址**: {mac_address}"></textarea>
+                            <div class="form-text">
+                                可用占位符: <strong>{router_name}</strong>（路由器名称）, <strong>{client_name}</strong>（客户端名称）, 
+                                <strong>{event_type}</strong>（事件类型：上线/下线/存活）, 
+                                <strong>{address}</strong>（IP地址）, <strong>{mac_address}</strong>（MAC地址）, 
+                                <strong>{hostname}</strong>（主机名）, <strong>{timestamp}</strong>（时间戳）
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveClient()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto" id="toastTitle">提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastBody"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        const routerModal = new bootstrap.Modal(document.getElementById('routerModal'));
+        const clientModal = new bootstrap.Modal(document.getElementById('clientModal'));
+        const toast = new bootstrap.Toast(document.getElementById('toast'));
+
+        function showToast(message, title = '提示', isError = false) {
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastBody').textContent = message;
+            document.getElementById('toast').querySelector('.toast-header').style.borderLeft = isError ? '4px solid #dc3545' : '4px solid #198754';
+            toast.show();
+        }
+
+        async function apiRequest(url, options = {}) {
+            const headers = {
+                'Authorization': `Bearer ${authToken}`,
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                logout();
+                throw new Error('Unauthorized');
+            }
+            return response;
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await apiRequest('/api/config');
+                const config = await response.json();
+                if (config.feishu_webhook_url) {
+                    document.getElementById('feishuWebhook').value = config.feishu_webhook_url;
+                }
+                renderRouters(config.routers);
+            } catch (error) {
+                showToast('加载配置失败', '错误', true);
+            }
+        }
+
+        async function refreshStatus(doManualRefresh = false) {
+            try {
+                if (doManualRefresh) {
+                    await apiRequest('/api/refresh', { method: 'POST' });
+                }
+                const response = await apiRequest('/api/status');
+                const status = await response.json();
+                renderStatus(status.routers);
+                if (doManualRefresh) {
+                    showToast('刷新完成');
+                }
+            } catch (error) {
+                showToast('刷新状态失败', '错误', true);
+            }
+        }
+
+        function renderStatus(routers) {
+            const container = document.getElementById('statusContent');
+            if (routers.length === 0) {
+                container.innerHTML = '<p class="text-muted">暂无ROS路由器</p>';
+                return;
+            }
+            
+            container.innerHTML = routers.map(router => `
+                <div class="router-card card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>${router.name} ${router.enabled ? '<span class="badge bg-success">已启用</span>' : '<span class="badge bg-secondary">已禁用</span>'}</span>
+                    </div>
+                    <div class="card-body">
+                        ${router.clients.length === 0 ? 
+                            '<p class="text-muted">暂无客户端</p>' :
+                            router.clients.map(client => `
+                                <div class="client-item mb-3 p-3 border rounded ${!client.enabled ? 'bg-light opacity-75' : ''}">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">${client.name} ${!client.enabled ? '<span class="badge bg-secondary ms-1">已禁用</span>' : ''}</h6>
+                                            <span class="${client.is_online ? 'online' : 'offline'}">
+                                                ${client.is_online ? '● 在线' : '○ 离线'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 small">
+                                        ${client.address ? `
+                                            <div class="col-md-4">
+                                                <strong>IP地址:</strong> ${client.address}
+                                            </div>
+                                        ` : ''}
+                                        ${client.mac_address ? `
+                                            <div class="col-md-4">
+                                                <strong>MAC地址:</strong> ${client.mac_address}
+                                            </div>
+                                        ` : ''}
+                                        ${client.active_hostname ? `
+                                            <div class="col-md-4">
+                                                <strong>主机名:</strong> ${client.active_hostname}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    ${client.last_seen ? `
+                                        <div class="small text-muted mt-1">
+                                            最后在线: ${new Date(client.last_seen).toLocaleString()}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function saveFeishuConfig() {
+            const url = document.getElementById('feishuWebhook').value;
+            try {
+                await apiRequest(`/api/config/feishu?url=${encodeURIComponent(url)}`, { method: 'PUT' });
+                showToast('飞书配置已保存');
+            } catch (error) {
+                showToast('保存配置失败', '错误', true);
+            }
+        }
+
+        async function testFeishuMessage() {
+            const message = document.getElementById('testMessage').value;
+            try {
+                const response = await apiRequest(`/api/test-feishu?message=${encodeURIComponent(message)}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('测试消息已发送');
+                } else {
+                    showToast('发送测试消息失败', '错误', true);
+                }
+            } catch (error) {
+                showToast('发送测试消息失败', '错误', true);
+            }
+        }
+
+        function renderRouters(routers) {
+            const container = document.getElementById('routersList');
+            if (routers.length === 0) {
+                container.innerHTML = '<p class="text-muted">暂无ROS路由器，请点击上方按钮添加</p>';
+                return;
+            }
+            
+            container.innerHTML = routers.map(router => `
+                <div class="router-card card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>${router.name} (${router.host}:${router.port}) ${router.enabled ? '<span class="badge bg-success">已启用</span>' : '<span class="badge bg-secondary">已禁用</span>'}</span>
+                        <div>
+                            <button class="btn btn-sm ${router.enabled ? 'btn-outline-warning' : 'btn-outline-success'} me-1" onclick="toggleRouter('${router.id}', ${!router.enabled})">${router.enabled ? '禁用' : '启用'}</button>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="showAddClientModal('${router.id}')">添加客户端</button>
+                            <button class="btn btn-sm btn-outline-secondary me-1" onclick="showEditRouterModal('${router.id}')">编辑</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRouter('${router.id}')">删除</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">客户端列表</h6>
+                        ${router.clients.length === 0 ? 
+                            '<p class="text-muted">暂无客户端</p>' :
+                            router.clients.map(client => `
+                                <div class="client-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>${client.name}</strong>
+                                            <div class="text-muted small">
+                                                ${client.enabled ? '' : '<span class="badge bg-secondary">已禁用</span> '}
+                                                ${client.address ? `IP: ${client.address} ` : ''}
+                                                ${client.mac_address ? `MAC: ${client.mac_address} ` : ''}
+                                                ${client.active_hostname ? `主机名: ${client.active_hostname}` : ''}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <button class="btn btn-sm ${client.enabled ? 'btn-outline-warning' : 'btn-outline-success'} me-1" onclick="toggleClient('${router.id}', '${client.id}', ${!client.enabled})">${client.enabled ? '禁用' : '启用'}</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1" onclick="showEditClientModal('${router.id}', '${client.id}')">编辑</button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteClient('${router.id}', '${client.id}')">删除</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showAddRouterModal() {
+            document.getElementById('routerModalTitle').textContent = '添加ROS路由器';
+            document.getElementById('routerForm').reset();
+            document.getElementById('routerId').value = '';
+            document.getElementById('routerEnabled').checked = true;
+            routerModal.show();
+        }
+
+        async function showEditRouterModal(routerId) {
+            try {
+                const response = await apiRequest('/api/config');
+                const config = await response.json();
+                const router = config.routers.find(r => r.id === routerId);
+                if (router) {
+                    document.getElementById('routerModalTitle').textContent = '编辑ROS路由器';
+                    document.getElementById('routerId').value = router.id;
+                    document.getElementById('routerName').value = router.name;
+                    document.getElementById('routerHost').value = router.host;
+                    document.getElementById('routerPort').value = router.port;
+                    document.getElementById('routerUsername').value = router.username;
+                    document.getElementById('routerPassword').value = router.password;
+                    document.getElementById('routerPollInterval').value = router.poll_interval_seconds;
+                    document.getElementById('routerSSL').checked = router.ssl;
+                    document.getElementById('routerEnabled').checked = router.enabled;
+                    routerModal.show();
+                }
+            } catch (error) {
+                showToast('加载ROS路由器信息失败', '错误', true);
+            }
+        }
+
+        async function saveRouter() {
+            const routerId = document.getElementById('routerId').value;
+            const router = {
+                name: document.getElementById('routerName').value,
+                host: document.getElementById('routerHost').value,
+                port: parseInt(document.getElementById('routerPort').value),
+                username: document.getElementById('routerUsername').value,
+                password: document.getElementById('routerPassword').value,
+                poll_interval_seconds: parseInt(document.getElementById('routerPollInterval').value),
+                ssl: document.getElementById('routerSSL').checked,
+                enabled: document.getElementById('routerEnabled').checked,
+                clients: []
+            };
+
+            try {
+                if (routerId) {
+                    const response = await apiRequest('/api/config');
+                    const config = await response.json();
+                    const existingRouter = config.routers.find(r => r.id === routerId);
+                    if (existingRouter) {
+                        router.clients = existingRouter.clients;
+                    }
+                    await apiRequest(`/api/config/routers/${routerId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(router)
+                    });
+                } else {
+                    await apiRequest('/api/config/routers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(router)
+                    });
+                }
+                routerModal.hide();
+                loadConfig();
+                refreshStatus();
+                showToast('ROS路由器已保存');
+            } catch (error) {
+                showToast('保存ROS路由器失败', '错误', true);
+            }
+        }
+
+        async function deleteRouter(routerId) {
+            if (confirm('确定要删除此ROS路由器吗？')) {
+                try {
+                    await apiRequest(`/api/config/routers/${routerId}`, { method: 'DELETE' });
+                    loadConfig();
+                    refreshStatus();
+                    showToast('ROS路由器已删除');
+                } catch (error) {
+                    showToast('删除ROS路由器失败', '错误', true);
+                }
+            }
+        }
+
+        function showAddClientModal(routerId) {
+            document.getElementById('clientModalTitle').textContent = '添加客户端';
+            document.getElementById('clientForm').reset();
+            document.getElementById('currentRouterId').value = routerId;
+            document.getElementById('clientId').value = '';
+            document.getElementById('clientEnabled').checked = true;
+            document.getElementById('pushAppear').checked = true;
+            document.getElementById('pushDisappear').checked = true;
+            document.getElementById('pushAlive').checked = false;
+            document.getElementById('aliveIntervalDiv').style.display = 'none';
+            document.getElementById('clientMessageTemplate').value = '';
+            clientModal.show();
+        }
+
+        async function showEditClientModal(routerId, clientId) {
+            try {
+                const response = await apiRequest('/api/config');
+                const config = await response.json();
+                const router = config.routers.find(r => r.id === routerId);
+                const client = router?.clients.find(c => c.id === clientId);
+                if (client) {
+                    document.getElementById('clientModalTitle').textContent = '编辑客户端';
+                    document.getElementById('currentRouterId').value = routerId;
+                    document.getElementById('clientId').value = client.id;
+                    document.getElementById('clientName').value = client.name;
+                    document.getElementById('clientEnabled').checked = client.enabled !== false;
+                    document.getElementById('clientAddress').value = client.address || '';
+                    document.getElementById('clientMacAddress').value = client.mac_address || '';
+                    document.getElementById('clientHostname').value = client.active_hostname || '';
+                    
+                    document.getElementById('pushAppear').checked = client.push_rules.some(r => r.type === 'appear' && r.enabled);
+                    document.getElementById('pushDisappear').checked = client.push_rules.some(r => r.type === 'disappear' && r.enabled);
+                    const aliveRule = client.push_rules.find(r => r.type === 'alive');
+                    document.getElementById('pushAlive').checked = aliveRule?.enabled || false;
+                    if (aliveRule?.interval_minutes) {
+                        document.getElementById('aliveInterval').value = aliveRule.interval_minutes;
+                    }
+                    document.getElementById('aliveIntervalDiv').style.display = aliveRule?.enabled ? 'block' : 'none';
+                    
+                    document.getElementById('clientMessageTemplate').value = client.message_template || '';
+                    
+                    clientModal.show();
+                }
+            } catch (error) {
+                showToast('加载客户端信息失败', '错误', true);
+            }
+        }
+
+        document.getElementById('pushAlive').addEventListener('change', function() {
+            document.getElementById('aliveIntervalDiv').style.display = this.checked ? 'block' : 'none';
+        });
+
+        async function saveClient() {
+            const routerId = document.getElementById('currentRouterId').value;
+            const clientId = document.getElementById('clientId').value;
+            
+            const pushRules = [];
+            if (document.getElementById('pushAppear').checked) {
+                pushRules.push({ type: 'appear', enabled: true });
+            }
+            if (document.getElementById('pushDisappear').checked) {
+                pushRules.push({ type: 'disappear', enabled: true });
+            }
+            if (document.getElementById('pushAlive').checked) {
+                pushRules.push({ 
+                    type: 'alive', 
+                    enabled: true, 
+                    interval_minutes: parseInt(document.getElementById('aliveInterval').value) 
+                });
+            }
+
+            const client = {
+                name: document.getElementById('clientName').value,
+                address: document.getElementById('clientAddress').value || null,
+                mac_address: document.getElementById('clientMacAddress').value || null,
+                active_hostname: document.getElementById('clientHostname').value || null,
+                push_rules: pushRules,
+                is_online: false,
+                last_push_times: {},
+                message_template: document.getElementById('clientMessageTemplate').value || null,
+                enabled: document.getElementById('clientEnabled').checked
+            };
+
+            try {
+                if (clientId) {
+                    const response = await apiRequest('/api/config');
+                    const config = await response.json();
+                    const router = config.routers.find(r => r.id === routerId);
+                    const existingClient = router?.clients.find(c => c.id === clientId);
+                    if (existingClient) {
+                        client.last_seen = existingClient.last_seen;
+                        client.is_online = existingClient.is_online;
+                        client.last_push_times = existingClient.last_push_times;
+                    }
+                    await apiRequest(`/api/config/routers/${routerId}/clients/${clientId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(client)
+                    });
+                } else {
+                    await apiRequest(`/api/config/routers/${routerId}/clients`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(client)
+                    });
+                }
+                clientModal.hide();
+                loadConfig();
+                refreshStatus();
+                showToast('客户端已保存');
+            } catch (error) {
+                showToast('保存客户端失败', '错误', true);
+            }
+        }
+
+        async function deleteClient(routerId, clientId) {
+            if (confirm('确定要删除此客户端吗？')) {
+                try {
+                    await apiRequest(`/api/config/routers/${routerId}/clients/${clientId}`, { method: 'DELETE' });
+                    loadConfig();
+                    refreshStatus();
+                    showToast('客户端已删除');
+                } catch (error) {
+                    showToast('删除客户端失败', '错误', true);
+                }
+            }
+        }
+
+        async function toggleRouter(routerId, enabled) {
+            try {
+                await apiRequest(`/api/config/routers/${routerId}/toggle?enabled=${enabled}`, { method: 'PUT' });
+                loadConfig();
+                refreshStatus();
+                showToast(`路由器已${enabled ? '启用' : '禁用'}`);
+            } catch (error) {
+                showToast(`路由器${enabled ? '启用' : '禁用'}失败`, '错误', true);
+            }
+        }
+
+        async function toggleClient(routerId, clientId, enabled) {
+            try {
+                await apiRequest(`/api/config/routers/${routerId}/clients/${clientId}/toggle?enabled=${enabled}`, { method: 'PUT' });
+                loadConfig();
+                refreshStatus();
+                showToast(`客户端已${enabled ? '启用' : '禁用'}`);
+            } catch (error) {
+                showToast(`客户端${enabled ? '启用' : '禁用'}失败`, '错误', true);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            refreshStatus(false);
+            setInterval(() => refreshStatus(false), 30000);
+        });
+    </script>
+</body>
+</html>
