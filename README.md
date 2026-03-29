@@ -74,7 +74,7 @@ python main.py
 ```yml
 services:
   mikrotik-watcher:
-    image: brantwang/mikrotik-client-watcher:v0.0.4
+    image: brantwang/mikrotik-client-watcher:v0.0.5
     container_name: mikrotik-watcher
     restart: unless-stopped
     ports:
@@ -98,7 +98,7 @@ docker run -d \
   -v ./data:/data \
   -e LOGIN_KEY=your-secret-key \
   --restart unless-stopped \
-  brantwang/mikrotik-client-watcher:v0.0.4
+  brantwang/mikrotik-client-watcher:v0.0.5
 ```
 
 ## 使用说明
