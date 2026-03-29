@@ -1,10 +1,12 @@
-import os
 import json
 import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
-from models import Config, RosRouter, ClientMonitor, ClientPushRule, PushRuleType
+
+from models import Config, RosRouter, ClientMonitor
+from settings import settings
+from time_utils import now
 
 
 logger = logging.getLogger(__name__)
@@ -12,20 +14,22 @@ logger = logging.getLogger(__name__)
 
 class ConfigManager:
     def __init__(self):
-        self.data_dir = Path(os.getenv('DATA_DIR', '.'))
-        self.config_file = self.data_dir / 'config.json'
-        self.log_dir = self.data_dir / 'logs'
-        
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        
+        self.data_dir = settings.data_dir
+        self.config_file = self.data_dir / "config.json"
+        self.log_dir = self.data_dir / "logs"
+
+        self._initialize_directories()
         self._config: Optional[Config] = None
         self._load_config()
 
-    def _load_config(self):
+    def _initialize_directories(self) -> None:
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
+    def _load_config(self) -> None:
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+                with open(self.config_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self._config = Config(**data)
                 logger.info(f"Loaded configuration from {self.config_file}")
@@ -35,42 +39,52 @@ class ConfigManager:
         else:
             self._create_default_config()
 
-    def _create_default_config(self):
+    def _create_default_config(self) -> None:
         self._config = Config()
         self._save_config()
         logger.info(f"Created default configuration at {self.config_file}")
 
-    def _save_config(self):
-        self._config.last_updated = datetime.now()
-        data = self._config.model_dump(mode='json')
-        with open(self.config_file, 'w', encoding='utf-8') as f:
+    def _save_config(self) -> None:
+        if self._config is None:
+            return
+        self._config.last_updated = now()
+        data = self._config.model_dump(mode="json")
+        with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     @property
     def config(self) -> Config:
+        if self._config is None:
+            raise RuntimeError("Config not initialized")
         return self._config
 
     def get_feishu_webhook_url(self) -> Optional[str]:
-        return self._config.feishu_webhook_url
+        return self._config.feishu_webhook_url if self._config else None
 
-    def set_feishu_webhook_url(self, url: str):
-        self._config.feishu_webhook_url = url
-        self._save_config()
+    def set_feishu_webhook_url(self, url: str) -> None:
+        if self._config:
+            self._config.feishu_webhook_url = url
+            self._save_config()
 
     def get_routers(self) -> list[RosRouter]:
-        return self._config.routers
+        return self._config.routers if self._config else []
 
     def get_router(self, router_id: str) -> Optional[RosRouter]:
+        if not self._config:
+            return None
         for router in self._config.routers:
             if router.id == router_id:
                 return router
         return None
 
-    def add_router(self, router: RosRouter):
-        self._config.routers.append(router)
-        self._save_config()
+    def add_router(self, router: RosRouter) -> None:
+        if self._config:
+            self._config.routers.append(router)
+            self._save_config()
 
-    def update_router(self, router_id: str, router: RosRouter):
+    def update_router(self, router_id: str, router: RosRouter) -> None:
+        if not self._config:
+            raise ValueError("Config not initialized")
         for i, r in enumerate(self._config.routers):
             if r.id == router_id:
                 router.id = router_id
@@ -79,11 +93,12 @@ class ConfigManager:
                 return
         raise ValueError(f"Router with id {router_id} not found")
 
-    def delete_router(self, router_id: str):
-        self._config.routers = [r for r in self._config.routers if r.id != router_id]
-        self._save_config()
+    def delete_router(self, router_id: str) -> None:
+        if self._config:
+            self._config.routers = [r for r in self._config.routers if r.id != router_id]
+            self._save_config()
 
-    def add_client(self, router_id: str, client: ClientMonitor):
+    def add_client(self, router_id: str, client: ClientMonitor) -> None:
         router = self.get_router(router_id)
         if router:
             router.clients.append(client)
@@ -91,28 +106,27 @@ class ConfigManager:
         else:
             raise ValueError(f"Router with id {router_id} not found")
 
-    def update_client(self, router_id: str, client_id: str, client: ClientMonitor):
+    def update_client(self, router_id: str, client_id: str, client: ClientMonitor) -> None:
         router = self.get_router(router_id)
-        if router:
-            for i, c in enumerate(router.clients):
-                if c.id == client_id:
-                    client.id = client_id
-                    router.clients[i] = client
-                    self._save_config()
-                    return
-            raise ValueError(f"Client with id {client_id} not found")
-        else:
+        if not router:
             raise ValueError(f"Router with id {router_id} not found")
+        for i, c in enumerate(router.clients):
+            if c.id == client_id:
+                client.id = client_id
+                router.clients[i] = client
+                self._save_config()
+                return
+        raise ValueError(f"Client with id {client_id} not found")
 
-    def delete_client(self, router_id: str, client_id: str):
+    def delete_client(self, router_id: str, client_id: str) -> None:
         router = self.get_router(router_id)
         if router:
             router.clients = [c for c in router.clients if c.id != client_id]
             self._save_config()
-        else:
-            raise ValueError(f"Router with id {router_id} not found")
 
-    def update_client_state(self, router_id: str, client_id: str, is_online: bool, last_seen: datetime):
+    def update_client_state(
+        self, router_id: str, client_id: str, is_online: bool, last_seen: datetime
+    ) -> None:
         router = self.get_router(router_id)
         if router:
             for client in router.clients:
@@ -122,7 +136,9 @@ class ConfigManager:
                     self._save_config()
                     return
 
-    def update_client_last_push(self, router_id: str, client_id: str, rule_type: str, push_time: datetime):
+    def update_client_last_push(
+        self, router_id: str, client_id: str, rule_type: str, push_time: datetime
+    ) -> None:
         router = self.get_router(router_id)
         if router:
             for client in router.clients:
@@ -131,7 +147,7 @@ class ConfigManager:
                     self._save_config()
                     return
 
-    def toggle_router_enabled(self, router_id: str, enabled: bool):
+    def toggle_router_enabled(self, router_id: str, enabled: bool) -> bool:
         router = self.get_router(router_id)
         if router:
             router.enabled = enabled
@@ -139,7 +155,7 @@ class ConfigManager:
             return True
         return False
 
-    def toggle_client_enabled(self, router_id: str, client_id: str, enabled: bool):
+    def toggle_client_enabled(self, router_id: str, client_id: str, enabled: bool) -> bool:
         router = self.get_router(router_id)
         if router:
             for client in router.clients:

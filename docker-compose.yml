@@ -13,3 +13,4 @@ services:
       - WEB_PORT=8000
       - DATA_DIR=/data
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TIMEZONE=${TIMEZONE:-Asia/Shanghai}

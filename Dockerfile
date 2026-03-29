@@ -32,6 +32,8 @@ ENV WEB_PORT=8000
 ENV LOGIN_KEY=admin123
 # 日志级别（DEBUG, INFO, WARNING, ERROR, CRITICAL）
 ENV LOG_LEVEL=INFO
+# 时区设置
+ENV TIMEZONE=Asia/Shanghai
 
 # 创建数据目录
 RUN mkdir -p /data

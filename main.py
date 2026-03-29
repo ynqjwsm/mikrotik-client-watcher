@@ -1,12 +1,11 @@
-import os
 import logging
 from logging.handlers import RotatingFileHandler
-from datetime import timedelta, datetime
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -14,47 +13,38 @@ from pydantic import BaseModel
 import uvicorn
 
 from config import config_manager
-from models import Config, RosRouter, ClientMonitor, ClientPushRule, PushRuleType
+from models import RosRouter, ClientMonitor
 from feishu_notifier import feishu_notifier
 from scheduler import scheduler
+from settings import settings
+
 
 load_dotenv()
 
-app = FastAPI(title="MikroTik Client Watcher")
-app.mount("/static", StaticFiles(directory="html/static"), name="static")
-templates = Jinja2Templates(directory="html/templates")
 
-
-security = HTTPBearer()
-SECRET_KEY = os.getenv('LOGIN_KEY', 'admin123')
-WEB_HOST = os.getenv('WEB_HOST', '0.0.0.0')
-WEB_PORT = int(os.getenv('WEB_PORT', '8000'))
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-
-
-def setup_logging():
-    log_dir = Path(os.getenv('DATA_DIR', '.')) / 'logs'
+def setup_logging() -> None:
+    log_dir = settings.data_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    
-    log_file = log_dir / 'app.log'
-    
+
+    log_file = log_dir / "app.log"
+
     root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, LOG_LEVEL.upper()))
-    
+    root_logger.setLevel(getattr(logging, settings.log_level.upper()))
+
     file_handler = RotatingFileHandler(
         log_file,
-        maxBytes=10*1024*1024,
+        maxBytes=10 * 1024 * 1024,
         backupCount=5,
-        encoding='utf-8'
+        encoding="utf-8",
     )
     console_handler = logging.StreamHandler()
-    
+
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
-    
+
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
 
@@ -63,29 +53,31 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+security = HTTPBearer()
 
 
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if credentials.credentials != SECRET_KEY:
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> bool:
+    if credentials.credentials != settings.login_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
+            detail="Invalid token",
         )
     return True
 
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     logger.info("Starting MikroTik Client Watcher")
-    feishu_notifier.set_webhook_url(config_manager.get_feishu_webhook_url() or '')
+    feishu_notifier.set_webhook_url(config_manager.get_feishu_webhook_url() or "")
     scheduler.start()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
+    yield
     logger.info("Shutting down MikroTik Client Watcher")
     scheduler.stop()
+
+
+app = FastAPI(title="MikroTik Client Watcher", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="html/static"), name="static")
+templates = Jinja2Templates(directory="html/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -104,14 +96,14 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/login")
 async def login(login_req: LoginRequest):
-    if login_req.key == SECRET_KEY:
+    if login_req.key == settings.login_key:
         return {"success": True, "token": login_req.key}
     raise HTTPException(status_code=401, detail="Invalid key")
 
 
 @app.get("/api/config")
 async def get_config(authenticated: bool = Depends(verify_token)):
-    return config_manager.config.model_dump(mode='json')
+    return config_manager.config.model_dump(mode="json")
 
 
 @app.put("/api/config/feishu")
@@ -170,24 +162,26 @@ async def test_feishu(message: str, authenticated: bool = Depends(verify_token))
 async def get_status(authenticated: bool = Depends(verify_token)):
     routers = []
     for router in config_manager.get_routers():
-        routers.append({
-            "id": router.id,
-            "name": router.name,
-            "enabled": router.enabled,
-            "clients": [
-                {
-                    "id": c.id,
-                    "name": c.name,
-                    "address": c.address,
-                    "mac_address": c.mac_address,
-                    "active_hostname": c.active_hostname,
-                    "is_online": c.is_online,
-                    "enabled": c.enabled,
-                    "last_seen": c.last_seen.isoformat() if c.last_seen else None
-                }
-                for c in router.clients
-            ]
-        })
+        routers.append(
+            {
+                "id": router.id,
+                "name": router.name,
+                "enabled": router.enabled,
+                "clients": [
+                    {
+                        "id": c.id,
+                        "name": c.name,
+                        "address": c.address,
+                        "mac_address": c.mac_address,
+                        "active_hostname": c.active_hostname,
+                        "is_online": c.is_online,
+                        "enabled": c.enabled,
+                        "last_seen": c.last_seen.isoformat() if c.last_seen else None,
+                    }
+                    for c in router.clients
+                ],
+            }
+        )
     return {"routers": routers}
 
 
@@ -217,4 +211,4 @@ async def toggle_client(router_id: str, client_id: str, enabled: bool, authentic
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=WEB_HOST, port=WEB_PORT)
+    uvicorn.run(app, host=settings.web_host, port=settings.web_port)
