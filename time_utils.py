@@ -1,23 +1,20 @@
 import os
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, Union
 
 from settings import settings
 
 
-def get_timezone() -> timezone:
+def get_timezone() -> Union[timezone, 'zoneinfo.ZoneInfo', 'pytz.BaseTzInfo']:
     try:
-        if hasattr(datetime, "astimezone"):
-            import zoneinfo
-            tz = zoneinfo.ZoneInfo(settings.timezone)
-            return timezone(timedelta(seconds=tz.utcoffset(datetime.now())), settings.timezone)
+        import zoneinfo
+        return zoneinfo.ZoneInfo(settings.timezone)
     except Exception:
         pass
     
     try:
         import pytz
-        tz = pytz.timezone(settings.timezone)
-        return timezone(timedelta(seconds=tz.utcoffset(datetime.now())), settings.timezone)
+        return pytz.timezone(settings.timezone)
     except Exception:
         pass
     
@@ -32,12 +29,23 @@ def now() -> datetime:
 def localize(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         tz = get_timezone()
+        if hasattr(tz, 'localize'):
+            return tz.localize(dt)
         return dt.replace(tzinfo=tz)
     return dt
 
 
 def format_datetime(dt: datetime, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
-    dt_local = localize(dt)
+    tz = get_timezone()
+    
+    if dt.tzinfo is None:
+        dt_local = localize(dt)
+    else:
+        try:
+            dt_local = dt.astimezone(tz)
+        except Exception:
+            dt_local = dt
+    
     return dt_local.strftime(fmt)
 
 

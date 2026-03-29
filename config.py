@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from models import Config, RosRouter, ClientMonitor
+from models import Config, RosRouter, ClientMonitor, FeishuConfig, EmailConfig
 from settings import settings
 from time_utils import now
 
@@ -26,11 +26,35 @@ class ConfigManager:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
+    def _migrate_config(self, data: dict) -> dict:
+        if "feishu_webhook_url" in data and "feishu" not in data:
+            data["feishu"] = {
+                "enabled": True,
+                "webhook_url": data["feishu_webhook_url"]
+            }
+            del data["feishu_webhook_url"]
+        if "feishu" not in data:
+            data["feishu"] = {"enabled": True, "webhook_url": None}
+        if "email" not in data:
+            data["email"] = {
+                "enabled": False,
+                "smtp_host": "",
+                "smtp_port": 587,
+                "smtp_username": "",
+                "smtp_password": "",
+                "use_tls": True,
+                "use_ssl": False,
+                "from_email": None,
+                "to_emails": []
+            }
+        return data
+
     def _load_config(self) -> None:
         if self.config_file.exists():
             try:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                data = self._migrate_config(data)
                 self._config = Config(**data)
                 logger.info(f"Loaded configuration from {self.config_file}")
             except Exception as e:
@@ -58,12 +82,28 @@ class ConfigManager:
             raise RuntimeError("Config not initialized")
         return self._config
 
+    def get_feishu_config(self) -> FeishuConfig:
+        return self._config.feishu if self._config else FeishuConfig()
+
+    def set_feishu_config(self, config: FeishuConfig) -> None:
+        if self._config:
+            self._config.feishu = config
+            self._save_config()
+
     def get_feishu_webhook_url(self) -> Optional[str]:
-        return self._config.feishu_webhook_url if self._config else None
+        return self._config.feishu.webhook_url if self._config else None
 
     def set_feishu_webhook_url(self, url: str) -> None:
         if self._config:
-            self._config.feishu_webhook_url = url
+            self._config.feishu.webhook_url = url
+            self._save_config()
+
+    def get_email_config(self) -> EmailConfig:
+        return self._config.email if self._config else EmailConfig()
+
+    def set_email_config(self, config: EmailConfig) -> None:
+        if self._config:
+            self._config.email = config
             self._save_config()
 
     def get_routers(self) -> list[RosRouter]:

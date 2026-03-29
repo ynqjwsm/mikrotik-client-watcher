@@ -1,5 +1,57 @@
 {
-  "feishu_webhook_url": null,
-  "routers": [],
-  "last_updated": "2026-03-29T02:00:55.398825"
+  "feishu": {
+    "enabled": true,
+    "webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/ec39da90-93bb-4729-8ce1-33fe7821f873"
+  },
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.189.cn",
+    "smtp_port": 465,
+    "smtp_username": "18987190724@189.cn",
+    "smtp_password": "kX!8cB*8X*6xW=3p",
+    "use_tls": false,
+    "use_ssl": true,
+    "from_email": "18987190724@189.cn",
+    "to_emails": [
+      "ynqjwsm@qq.com"
+    ]
+  },
+  "routers": [
+    {
+      "id": "20260329134836810105",
+      "name": "HOME",
+      "host": "192.168.6.1",
+      "port": 8728,
+      "username": "admin",
+      "password": "brant@dsj123",
+      "ssl": false,
+      "poll_interval_seconds": 30,
+      "clients": [
+        {
+          "id": "20260329134847812100",
+          "name": "王庶民的小米",
+          "address": null,
+          "mac_address": "A4:FF:9F:89:85:E5",
+          "active_hostname": null,
+          "push_rules": [
+            {
+              "type": "appear",
+              "enabled": true
+            },
+            {
+              "type": "disappear",
+              "enabled": true
+            }
+          ],
+          "last_seen": "2026-03-29T05:51:07.833857Z",
+          "is_online": true,
+          "last_push_times": {},
+          "message_template": null,
+          "enabled": true
+        }
+      ],
+      "enabled": true
+    }
+  ],
+  "last_updated": "2026-03-29T05:51:07.834065Z"
 }

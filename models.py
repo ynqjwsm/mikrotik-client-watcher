@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from datetime import datetime
@@ -7,13 +7,28 @@ from datetime import datetime
 class PushRuleType(str, Enum):
     APPEAR = "appear"
     DISAPPEAR = "disappear"
-    ALIVE = "alive"
 
 
 class ClientPushRule(BaseModel):
     type: PushRuleType
     enabled: bool = True
-    interval_minutes: Optional[int] = Field(None, ge=1)
+
+
+class EmailConfig(BaseModel):
+    enabled: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    use_tls: bool = True
+    use_ssl: bool = False
+    from_email: Optional[EmailStr] = None
+    to_emails: List[EmailStr] = Field(default_factory=list)
+
+
+class FeishuConfig(BaseModel):
+    enabled: bool = True
+    webhook_url: Optional[str] = None
 
 
 class ClientMonitor(BaseModel):
@@ -80,6 +95,7 @@ class RosRouter(BaseModel):
 
 
 class Config(BaseModel):
-    feishu_webhook_url: Optional[str] = None
+    feishu: FeishuConfig = Field(default_factory=FeishuConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
     routers: List[RosRouter] = Field(default_factory=list)
     last_updated: datetime = Field(default_factory=datetime.now)

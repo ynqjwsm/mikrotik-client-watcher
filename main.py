@@ -13,8 +13,9 @@ from pydantic import BaseModel
 import uvicorn
 
 from config import config_manager
-from models import RosRouter, ClientMonitor
+from models import RosRouter, ClientMonitor, FeishuConfig, EmailConfig
 from feishu_notifier import feishu_notifier
+from email_notifier import email_notifier
 from scheduler import scheduler
 from settings import settings
 
@@ -68,7 +69,8 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting MikroTik Client Watcher")
-    feishu_notifier.set_webhook_url(config_manager.get_feishu_webhook_url() or "")
+    feishu_notifier.set_config(config_manager.get_feishu_config())
+    email_notifier.set_config(config_manager.get_email_config())
     scheduler.start()
     yield
     logger.info("Shutting down MikroTik Client Watcher")
@@ -107,9 +109,16 @@ async def get_config(authenticated: bool = Depends(verify_token)):
 
 
 @app.put("/api/config/feishu")
-async def update_feishu_webhook(url: str, authenticated: bool = Depends(verify_token)):
-    config_manager.set_feishu_webhook_url(url)
-    feishu_notifier.set_webhook_url(url)
+async def update_feishu_config(config: FeishuConfig, authenticated: bool = Depends(verify_token)):
+    config_manager.set_feishu_config(config)
+    feishu_notifier.set_config(config)
+    return {"success": True}
+
+
+@app.put("/api/config/email")
+async def update_email_config(config: EmailConfig, authenticated: bool = Depends(verify_token)):
+    config_manager.set_email_config(config)
+    email_notifier.set_config(config)
     return {"success": True}
 
 
@@ -155,6 +164,12 @@ async def delete_client(router_id: str, client_id: str, authenticated: bool = De
 @app.post("/api/test-feishu")
 async def test_feishu(message: str, authenticated: bool = Depends(verify_token)):
     success = feishu_notifier.send_message(message)
+    return {"success": success}
+
+
+@app.post("/api/test-email")
+async def test_email(subject: str, body: str, authenticated: bool = Depends(verify_token)):
+    success = email_notifier.send_message(subject, body)
     return {"success": success}
 
 

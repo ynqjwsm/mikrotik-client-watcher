@@ -31,6 +31,9 @@
                 <button class="nav-link" id="feishu-tab" data-bs-toggle="tab" data-bs-target="#feishu" type="button" role="tab">飞书配置</button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab">邮件配置</button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="routers-tab" data-bs-toggle="tab" data-bs-target="#routers" type="button" role="tab">ROS路由器管理</button>
             </li>
         </ul>
@@ -53,16 +56,94 @@
                     <div class="card-header">飞书 Webhook 配置</div>
                     <div class="card-body">
                         <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="feishuEnabled">
+                                <label class="form-check-label" for="feishuEnabled">启用飞书通知</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                             <label for="feishuWebhook" class="form-label">Webhook URL</label>
                             <input type="text" class="form-control" id="feishuWebhook" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/...">
                         </div>
                         <div class="mb-3">
-                            <label for="testMessage" class="form-label">测试消息</label>
-                            <input type="text" class="form-control" id="testMessage" value="这是一条测试消息">
+                            <label for="feishuTestMessage" class="form-label">测试消息</label>
+                            <input type="text" class="form-control" id="feishuTestMessage" value="这是一条测试消息">
                         </div>
                         <div class="d-flex gap-2">
                             <button class="btn btn-primary" onclick="saveFeishuConfig()">保存配置</button>
                             <button class="btn btn-secondary" onclick="testFeishuMessage()">发送测试消息</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="email" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">邮件通知配置</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="emailEnabled">
+                                <label class="form-check-label" for="emailEnabled">启用邮件通知</label>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="smtpHost" class="form-label">SMTP 服务器地址</label>
+                                <input type="text" class="form-control" id="smtpHost" placeholder="smtp.example.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="smtpPort" class="form-label">SMTP 端口</label>
+                                <input type="number" class="form-control" id="smtpPort" value="587">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="smtpUsername" class="form-label">SMTP 用户名</label>
+                                <input type="text" class="form-control" id="smtpUsername" placeholder="your-email@example.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="smtpPassword" class="form-label">SMTP 密码</label>
+                                <input type="password" class="form-control" id="smtpPassword" placeholder="your-password">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="useTLS" checked>
+                                    <label class="form-check-label" for="useTLS">使用 TLS</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="useSSL">
+                                    <label class="form-check-label" for="useSSL">使用 SSL</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="fromEmail" class="form-label">发件人邮箱</label>
+                                <input type="email" class="form-control" id="fromEmail" placeholder="noreply@example.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="toEmails" class="form-label">收件人邮箱（多个用逗号分隔）</label>
+                                <input type="text" class="form-control" id="toEmails" placeholder="user1@example.com, user2@example.com">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="emailTestSubject" class="form-label">测试邮件标题</label>
+                                <input type="text" class="form-control" id="emailTestSubject" value="测试邮件">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="emailTestBody" class="form-label">测试邮件内容</label>
+                                <input type="text" class="form-control" id="emailTestBody" value="这是一封测试邮件">
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="saveEmailConfig()">保存配置</button>
+                            <button class="btn btn-secondary" onclick="testEmailMessage()">发送测试邮件</button>
                         </div>
                     </div>
                 </div>
@@ -176,28 +257,18 @@
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="pushAppear" checked>
                                     <label class="form-check-label" for="pushAppear">上线推送</label>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="pushDisappear" checked>
                                     <label class="form-check-label" for="pushDisappear">下线推送</label>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="pushAlive">
-                                    <label class="form-check-label" for="pushAlive">存活推送</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3" id="aliveIntervalDiv" style="display: none;">
-                            <label for="aliveInterval" class="form-label">存活推送间隔(分钟)</label>
-                            <input type="number" class="form-control" id="aliveInterval" value="60" min="1">
                         </div>
                         <div class="mb-3">
                             <label for="clientMessageTemplate" class="form-label">消息模板（可选，留空使用默认模板，支持Markdown格式）</label>
@@ -206,7 +277,7 @@
 **MAC地址**: {mac_address}"></textarea>
                             <div class="form-text">
                                 可用占位符: <strong>{router_name}</strong>（路由器名称）, <strong>{client_name}</strong>（客户端名称）, 
-                                <strong>{event_type}</strong>（事件类型：上线/下线/存活）, 
+                                <strong>{event_type}</strong>（事件类型：上线/下线）, 
                                 <strong>{address}</strong>（IP地址）, <strong>{mac_address}</strong>（MAC地址）, 
                                 <strong>{hostname}</strong>（主机名）, <strong>{timestamp}</strong>（时间戳）
                             </div>
@@ -271,9 +342,27 @@
             try {
                 const response = await apiRequest('/api/config');
                 const config = await response.json();
-                if (config.feishu_webhook_url) {
+                
+                if (config.feishu) {
+                    document.getElementById('feishuEnabled').checked = config.feishu.enabled;
+                    document.getElementById('feishuWebhook').value = config.feishu.webhook_url || '';
+                } else if (config.feishu_webhook_url) {
+                    document.getElementById('feishuEnabled').checked = true;
                     document.getElementById('feishuWebhook').value = config.feishu_webhook_url;
                 }
+                
+                if (config.email) {
+                    document.getElementById('emailEnabled').checked = config.email.enabled;
+                    document.getElementById('smtpHost').value = config.email.smtp_host || '';
+                    document.getElementById('smtpPort').value = config.email.smtp_port || 587;
+                    document.getElementById('smtpUsername').value = config.email.smtp_username || '';
+                    document.getElementById('smtpPassword').value = config.email.smtp_password || '';
+                    document.getElementById('useTLS').checked = config.email.use_tls;
+                    document.getElementById('useSSL').checked = config.email.use_ssl;
+                    document.getElementById('fromEmail').value = config.email.from_email || '';
+                    document.getElementById('toEmails').value = (config.email.to_emails || []).join(', ');
+                }
+                
                 renderRouters(config.routers);
             } catch (error) {
                 showToast('加载配置失败', '错误', true);
@@ -352,9 +441,16 @@
         }
 
         async function saveFeishuConfig() {
-            const url = document.getElementById('feishuWebhook').value;
+            const config = {
+                enabled: document.getElementById('feishuEnabled').checked,
+                webhook_url: document.getElementById('feishuWebhook').value
+            };
             try {
-                await apiRequest(`/api/config/feishu?url=${encodeURIComponent(url)}`, { method: 'PUT' });
+                await apiRequest('/api/config/feishu', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
                 showToast('飞书配置已保存');
             } catch (error) {
                 showToast('保存配置失败', '错误', true);
@@ -362,7 +458,7 @@
         }
 
         async function testFeishuMessage() {
-            const message = document.getElementById('testMessage').value;
+            const message = document.getElementById('feishuTestMessage').value;
             try {
                 const response = await apiRequest(`/api/test-feishu?message=${encodeURIComponent(message)}`, { method: 'POST' });
                 const result = await response.json();
@@ -373,6 +469,49 @@
                 }
             } catch (error) {
                 showToast('发送测试消息失败', '错误', true);
+            }
+        }
+
+        async function saveEmailConfig() {
+            const toEmailsStr = document.getElementById('toEmails').value;
+            const toEmails = toEmailsStr ? toEmailsStr.split(',').map(e => e.trim()).filter(e => e) : [];
+            
+            const config = {
+                enabled: document.getElementById('emailEnabled').checked,
+                smtp_host: document.getElementById('smtpHost').value,
+                smtp_port: parseInt(document.getElementById('smtpPort').value),
+                smtp_username: document.getElementById('smtpUsername').value,
+                smtp_password: document.getElementById('smtpPassword').value,
+                use_tls: document.getElementById('useTLS').checked,
+                use_ssl: document.getElementById('useSSL').checked,
+                from_email: document.getElementById('fromEmail').value || null,
+                to_emails: toEmails
+            };
+            try {
+                await apiRequest('/api/config/email', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                showToast('邮件配置已保存');
+            } catch (error) {
+                showToast('保存配置失败', '错误', true);
+            }
+        }
+
+        async function testEmailMessage() {
+            const subject = document.getElementById('emailTestSubject').value;
+            const body = document.getElementById('emailTestBody').value;
+            try {
+                const response = await apiRequest(`/api/test-email?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('测试邮件已发送');
+                } else {
+                    showToast('发送测试邮件失败', '错误', true);
+                }
+            } catch (error) {
+                showToast('发送测试邮件失败', '错误', true);
             }
         }
 
@@ -519,8 +658,6 @@
             document.getElementById('clientEnabled').checked = true;
             document.getElementById('pushAppear').checked = true;
             document.getElementById('pushDisappear').checked = true;
-            document.getElementById('pushAlive').checked = false;
-            document.getElementById('aliveIntervalDiv').style.display = 'none';
             document.getElementById('clientMessageTemplate').value = '';
             clientModal.show();
         }
@@ -543,12 +680,6 @@
                     
                     document.getElementById('pushAppear').checked = client.push_rules.some(r => r.type === 'appear' && r.enabled);
                     document.getElementById('pushDisappear').checked = client.push_rules.some(r => r.type === 'disappear' && r.enabled);
-                    const aliveRule = client.push_rules.find(r => r.type === 'alive');
-                    document.getElementById('pushAlive').checked = aliveRule?.enabled || false;
-                    if (aliveRule?.interval_minutes) {
-                        document.getElementById('aliveInterval').value = aliveRule.interval_minutes;
-                    }
-                    document.getElementById('aliveIntervalDiv').style.display = aliveRule?.enabled ? 'block' : 'none';
                     
                     document.getElementById('clientMessageTemplate').value = client.message_template || '';
                     
@@ -558,10 +689,6 @@
                 showToast('加载客户端信息失败', '错误', true);
             }
         }
-
-        document.getElementById('pushAlive').addEventListener('change', function() {
-            document.getElementById('aliveIntervalDiv').style.display = this.checked ? 'block' : 'none';
-        });
 
         async function saveClient() {
             const routerId = document.getElementById('currentRouterId').value;
@@ -573,13 +700,6 @@
             }
             if (document.getElementById('pushDisappear').checked) {
                 pushRules.push({ type: 'disappear', enabled: true });
-            }
-            if (document.getElementById('pushAlive').checked) {
-                pushRules.push({ 
-                    type: 'alive', 
-                    enabled: true, 
-                    interval_minutes: parseInt(document.getElementById('aliveInterval').value) 
-                });
             }
 
             const client = {

@@ -1,10 +1,10 @@
 import logging
-from datetime import timedelta
 from typing import Dict, Any, Optional
 
 from models import RosRouter, ClientMonitor, PushRuleType
 from mikrotik_client import MikroTikClient
 from feishu_notifier import feishu_notifier, MessageContext
+from email_notifier import email_notifier
 from config import config_manager
 from time_utils import now
 
@@ -74,11 +74,6 @@ class RouterMonitor:
 
             client_monitor.is_online = is_online_now
 
-            if is_online_now:
-                self._handle_alive_push(
-                    client_monitor, matched_client, is_manual_refresh
-                )
-
             if not is_online_now and client_monitor.id in self.online_client_info:
                 del self.online_client_info[client_monitor.id]
 
@@ -128,28 +123,6 @@ class RouterMonitor:
                 is_manual_refresh,
             )
 
-    def _handle_alive_push(
-        self,
-        client_monitor: ClientMonitor,
-        matched_client: Optional[Dict[str, Any]],
-        is_manual_refresh: bool,
-    ) -> None:
-        rule = self._find_rule(client_monitor, PushRuleType.ALIVE)
-        if not rule or not rule.enabled or not rule.interval_minutes:
-            return
-
-        current_time = now()
-        last_push = client_monitor.last_push_times.get(PushRuleType.ALIVE)
-
-        if last_push is None or (current_time - last_push) >= timedelta(minutes=rule.interval_minutes):
-            self._send_push(
-                client_monitor,
-                PushRuleType.ALIVE,
-                "存活",
-                matched_client,
-                is_manual_refresh,
-            )
-
     def _find_rule(
         self, client_monitor: ClientMonitor, rule_type: PushRuleType
     ) -> Optional[Any]:
@@ -181,17 +154,31 @@ class RouterMonitor:
             timestamp=current_time,
         )
 
-        message = feishu_notifier.format_message(
+        pushed = False
+
+        feishu_message = feishu_notifier.format_message(
             template=client_monitor.message_template,
             context=context,
         )
+        if feishu_notifier.send_message(feishu_message):
+            pushed = True
 
-        if feishu_notifier.send_message(message):
-            if not is_manual_refresh:
-                client_monitor.last_push_times[rule_type] = current_time
-                config_manager.update_client_last_push(
-                    self.router.id,
-                    client_monitor.id,
-                    rule_type,
-                    current_time,
-                )
+        email_subject = email_notifier.format_subject(
+            template=client_monitor.message_template,
+            context=context,
+        )
+        email_body = email_notifier.format_body(
+            template=client_monitor.message_template,
+            context=context,
+        )
+        if email_notifier.send_message(email_subject, email_body):
+            pushed = True
+
+        if pushed and not is_manual_refresh:
+            client_monitor.last_push_times[rule_type] = current_time
+            config_manager.update_client_last_push(
+                self.router.id,
+                client_monitor.id,
+                rule_type,
+                current_time,
+            )

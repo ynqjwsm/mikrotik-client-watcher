@@ -5,6 +5,7 @@ from datetime import datetime
 
 import requests
 
+from models import FeishuConfig
 from time_utils import now, format_datetime
 
 
@@ -26,14 +27,21 @@ _DEFAULT_TEMPLATE = "{router_name} - {client_name} {event_type}"
 
 
 class FeishuNotifier:
-    def __init__(self, webhook_url: Optional[str] = None):
-        self.webhook_url = webhook_url
+    def __init__(self, config: Optional[FeishuConfig] = None):
+        self.config = config or FeishuConfig()
+
+    def set_config(self, config: FeishuConfig) -> None:
+        self.config = config
 
     def set_webhook_url(self, url: str) -> None:
-        self.webhook_url = url
+        self.config.webhook_url = url
 
     def send_message(self, message: str) -> bool:
-        if not self.webhook_url:
+        if not self.config.enabled:
+            logger.debug("Feishu notifications are disabled")
+            return False
+
+        if not self.config.webhook_url:
             logger.warning("Feishu webhook URL not configured, skipping message")
             return False
 
@@ -42,7 +50,7 @@ class FeishuNotifier:
 
             logger.debug(f"Sending message to Feishu: {message}")
             response = requests.post(
-                self.webhook_url,
+                self.config.webhook_url,
                 json=payload,
                 timeout=10,
             )
@@ -82,3 +90,6 @@ class FeishuNotifier:
             message = message.replace(placeholder, value)
 
         return message
+
+
+feishu_notifier = FeishuNotifier()
